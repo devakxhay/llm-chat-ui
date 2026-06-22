@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Settings } from "../hooks/useSettings";
 import { Server, HelpCircle, Sun, Moon, Trash2, CheckCircle2, AlertCircle } from "lucide-react";
 import Button from "./ui/Button";
+import { PERSONAS } from "../lib/personas";
 
 interface SettingsPanelProps {
   settings: Settings;
@@ -24,6 +25,8 @@ export function SettingsPanel({
 }: SettingsPanelProps) {
   const [localUrl, setLocalUrl] = useState(settings.ollamaUrl);
   const [testResult, setTestResult] = useState<"success" | "error" | null>(null);
+
+  const activePersona = PERSONAS.find((p) => p.id === settings.selectedPersonaId) || PERSONAS[0];
 
   // Sync settings when loaded
   useEffect(() => {
@@ -93,21 +96,42 @@ export function SettingsPanel({
       {/* Model Parameters */}
       <div className="space-y-4">
         <div className="space-y-1.5">
+          <label className="font-semibold text-foreground block">Agent Persona Character</label>
+          <select
+            value={settings.selectedPersonaId || "ilsa"}
+            onChange={(e) => updateSetting("selectedPersonaId", e.target.value)}
+            className="w-full bg-card border border-border focus:border-primary/80 focus:ring-2 focus:ring-primary/20 rounded-xl px-3 py-2 text-xs focus:outline-none text-foreground font-sans cursor-pointer"
+          >
+            {PERSONAS.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.emoji} {p.name} ({p.role})
+              </option>
+            ))}
+          </select>
+          {settings.selectedPersonaId !== "custom" && (
+            <p className="text-[10px] text-muted-foreground mt-1">
+              Currently active: <strong className="text-foreground">{activePersona.name} ({activePersona.role})</strong>. Prompt and temperature parameters are pre-configured. Select "Custom Operative" to edit manually.
+            </p>
+          )}
+        </div>
+
+        <div className="space-y-1.5">
           <label className="font-semibold text-foreground block">System Prompt</label>
           <textarea
-            value={settings.systemPrompt}
+            value={settings.selectedPersonaId === "custom" ? settings.systemPrompt : activePersona.systemPrompt}
             onChange={(e) => updateSetting("systemPrompt", e.target.value)}
+            disabled={settings.selectedPersonaId !== "custom"}
             rows={3}
-            placeholder="Introduce system instructions..."
-            className="w-full bg-card border border-border focus:border-primary/80 focus:ring-2 focus:ring-primary/20 rounded-xl px-3 py-2 text-xs focus:outline-none text-foreground"
+            placeholder={settings.selectedPersonaId === "custom" ? "Introduce system instructions..." : "Select Custom Operative to edit..."}
+            className={`w-full bg-card border border-border focus:border-primary/80 focus:ring-2 focus:ring-primary/20 rounded-xl px-3 py-2 text-xs focus:outline-none text-foreground ${settings.selectedPersonaId !== "custom" ? "opacity-60 cursor-not-allowed bg-secondary/30" : ""}`}
           />
         </div>
 
         <div className="space-y-2">
           <div className="flex items-center justify-between text-xs font-semibold text-foreground">
-            <span>Temperature ({settings.temperature})</span>
+            <span>Temperature ({settings.selectedPersonaId === "custom" ? settings.temperature : activePersona.temperature})</span>
             <span className="text-muted font-normal">
-              {settings.temperature <= 0.3 ? "Precise" : settings.temperature >= 1.0 ? "Creative" : "Balanced"}
+              {(settings.selectedPersonaId === "custom" ? settings.temperature : activePersona.temperature) <= 0.3 ? "Precise" : (settings.selectedPersonaId === "custom" ? settings.temperature : activePersona.temperature) >= 1.0 ? "Creative" : "Balanced"}
             </span>
           </div>
           <input
@@ -115,10 +139,41 @@ export function SettingsPanel({
             min="0.1"
             max="1.5"
             step="0.1"
-            value={settings.temperature}
+            value={settings.selectedPersonaId === "custom" ? settings.temperature : activePersona.temperature}
             onChange={(e) => updateSetting("temperature", parseFloat(e.target.value))}
-            className="w-full accent-primary bg-secondary h-1.5 rounded-full cursor-pointer"
+            disabled={settings.selectedPersonaId !== "custom"}
+            className={`w-full accent-primary bg-secondary h-1.5 rounded-full cursor-pointer ${settings.selectedPersonaId !== "custom" ? "opacity-60 cursor-not-allowed" : ""}`}
           />
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-xs font-semibold text-foreground">
+            <span>Context Window Limit ({settings.contextLimit || 2048} tokens)</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <input
+              type="range"
+              min="512"
+              max="32768"
+              step="512"
+              value={settings.contextLimit || 2048}
+              onChange={(e) => updateSetting("contextLimit", parseInt(e.target.value))}
+              className="flex-1 accent-primary bg-secondary h-1.5 rounded-full cursor-pointer"
+            />
+            <input
+              type="number"
+              min="512"
+              max="131072"
+              value={settings.contextLimit || 2048}
+              onChange={(e) => {
+                const val = parseInt(e.target.value);
+                if (!isNaN(val)) {
+                  updateSetting("contextLimit", val);
+                }
+              }}
+              className="w-20 bg-card border border-border focus:border-primary/80 focus:ring-2 focus:ring-primary/20 rounded-xl px-2 py-1 text-center text-xs text-foreground font-mono"
+            />
+          </div>
         </div>
       </div>
 

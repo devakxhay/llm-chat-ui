@@ -99,7 +99,6 @@ export function useChat() {
     },
     [setChats]
   );
-
   const runChatStream = useCallback(
     async (
       chatId: string,
@@ -107,6 +106,7 @@ export function useChat() {
       chatPayload: ChatMessagePayload[],
       ollamaUrl: string,
       temperature: number,
+      contextLimit: number,
       chatStreamFn: (
         url: string,
         payload: {
@@ -114,6 +114,7 @@ export function useChat() {
           messages: ChatMessagePayload[];
           options?: {
             temperature?: number;
+            num_ctx?: number;
           };
         },
         onChunk: (text: string) => void,
@@ -137,6 +138,7 @@ export function useChat() {
           messages: chatPayload,
           options: {
             temperature,
+            num_ctx: contextLimit,
           },
         },
         // onChunk
@@ -175,6 +177,7 @@ export function useChat() {
       model: string,
       systemPrompt: string,
       temperature: number,
+      contextLimit: number,
       chatStreamFn: (
         url: string,
         payload: {
@@ -182,6 +185,7 @@ export function useChat() {
           messages: ChatMessagePayload[];
           options?: {
             temperature?: number;
+            num_ctx?: number;
           };
         },
         onChunk: (text: string) => void,
@@ -300,6 +304,7 @@ export function useChat() {
         chatPayload,
         ollamaUrl,
         temperature,
+        contextLimit,
         chatStreamFn
       );
     },
@@ -311,6 +316,7 @@ export function useChat() {
       ollamaUrl: string,
       systemPrompt: string,
       temperature: number,
+      contextLimit: number,
       chatStreamFn: (
         url: string,
         payload: {
@@ -318,6 +324,7 @@ export function useChat() {
           messages: ChatMessagePayload[];
           options?: {
             temperature?: number;
+            num_ctx?: number;
           };
         },
         onChunk: (text: string) => void,
@@ -361,6 +368,7 @@ export function useChat() {
         chatPayload,
         ollamaUrl,
         temperature,
+        contextLimit,
         chatStreamFn
       );
     },

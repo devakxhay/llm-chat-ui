@@ -8,6 +8,8 @@ export interface Settings {
   systemPrompt: string;
   temperature: number;
   theme: "light" | "dark";
+  contextLimit: number;
+  selectedPersonaId: string;
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -15,6 +17,8 @@ const DEFAULT_SETTINGS: Settings = {
   systemPrompt: "You are Ilsa, the highly capable ex-MI6 operative. Speak with a refined, sharp, and calculated tone. Keep responses concise, strategic, and intelligent. You are resourcefully assisting the user like a rogue agent partner.",
   temperature: 0.7,
   theme: "dark",
+  contextLimit: 2048,
+  selectedPersonaId: "ilsa",
 };
 
 export function useSettings() {

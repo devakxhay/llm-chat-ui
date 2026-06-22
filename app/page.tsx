@@ -9,6 +9,7 @@ import ChatWindow from "../components/ChatWindow";
 import Modal from "../components/ui/Modal";
 import SettingsPanel from "../components/SettingsPanel";
 import { useLocalStorage } from "../hooks/useLocalStorage";
+import { PERSONAS } from "../lib/personas";
 
 export default function Home() {
   const { settings, updateSetting, resetSettings } = useSettings();
@@ -61,13 +62,18 @@ export default function Home() {
     }
   }, [models, selectedModel, setSelectedModel]);
 
+  const activePersona = PERSONAS.find((p) => p.id === settings.selectedPersonaId) || PERSONAS[0];
+  const activeSystemPrompt = settings.selectedPersonaId === "custom" ? settings.systemPrompt : activePersona.systemPrompt;
+  const activeTemperature = settings.selectedPersonaId === "custom" ? settings.temperature : activePersona.temperature;
+
   const handleSendMessage = (content: string) => {
     sendMessage(
       content,
       settings.ollamaUrl,
       selectedModel,
-      settings.systemPrompt,
-      settings.temperature,
+      activeSystemPrompt,
+      activeTemperature,
+      settings.contextLimit,
       chatStream
     );
   };
@@ -75,8 +81,9 @@ export default function Home() {
   const handleRegenerate = () => {
     regenerateLastMessage(
       settings.ollamaUrl,
-      settings.systemPrompt,
-      settings.temperature,
+      activeSystemPrompt,
+      activeTemperature,
+      settings.contextLimit,
       chatStream
     );
   };
@@ -110,6 +117,8 @@ export default function Home() {
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         onOpenSettings={() => setIsSettingsOpen(true)}
         connectionStatus={connectionStatus}
+        settings={settings}
+        onUpdateSetting={updateSetting}
       />
 
       {/* Settings Modal Dialog */}

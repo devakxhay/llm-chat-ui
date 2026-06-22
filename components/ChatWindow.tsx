@@ -1,9 +1,11 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Send, Menu, Settings, ChevronDown, Check } from "lucide-react";
+import { Send, Menu, Settings as SettingsIcon, ChevronDown, Check } from "lucide-react";
 import { ChatSession } from "../hooks/useChat";
 import { OllamaModel } from "../hooks/useOllama";
+import { Settings } from "../hooks/useSettings";
+import { PERSONAS } from "../lib/personas";
 import MessageItem from "./MessageItem";
 import Button from "./ui/Button";
 
@@ -18,6 +20,8 @@ interface ChatWindowProps {
   onToggleSidebar: () => void;
   onOpenSettings: () => void;
   connectionStatus: "connected" | "disconnected" | "checking" | "idle";
+  settings: Settings;
+  onUpdateSetting: <K extends keyof Settings>(key: K, value: Settings[K]) => void;
 }
 
 const QUICK_PROMPTS = [
@@ -38,9 +42,36 @@ export function ChatWindow({
   onToggleSidebar,
   onOpenSettings,
   connectionStatus,
+  settings,
+  onUpdateSetting,
 }: ChatWindowProps) {
   const [input, setInput] = useState("");
   const [showModelDropdown, setShowModelDropdown] = useState(false);
+  const [showPersonaDropdown, setShowPersonaDropdown] = useState(false);
+
+  const activePersona = PERSONAS.find((p) => p.id === settings.selectedPersonaId) || PERSONAS[0];
+
+  // Token calculation helpers
+  const estimateTokens = (text: string): number => {
+    if (!text) return 0;
+    const words = text.trim().split(/\s+/).length;
+    return Math.max(Math.ceil(words * 1.3), Math.ceil(text.length / 4));
+  };
+
+  const systemTokens = estimateTokens(settings?.systemPrompt || "");
+  const messagesTokens = activeChat?.messages.reduce((acc, msg) => acc + estimateTokens(msg.content), 0) || 0;
+  const inputTokens = estimateTokens(input);
+  const totalTokens = systemTokens + messagesTokens + inputTokens;
+  const maxTokens = settings?.contextLimit || 2048;
+  const percentUsed = Math.min((totalTokens / maxTokens) * 100, 100);
+
+  const isChatModel = !selectedModel || (
+    !selectedModel.toLowerCase().includes("embed") && 
+    !selectedModel.toLowerCase().includes("rerank") && 
+    !selectedModel.toLowerCase().includes("bge") && 
+    !selectedModel.toLowerCase().includes("colbert")
+  );
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -150,6 +181,62 @@ export function ChatWindow({
               </>
             )}
           </div>
+
+          {/* Persona Selector Dropdown */}
+          {isChatModel && (
+            <div className="relative">
+              <button
+                onClick={() => setShowPersonaDropdown(!showPersonaDropdown)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-secondary/60 hover:bg-secondary border border-border/40 text-xs font-semibold transition-all text-foreground cursor-pointer"
+              >
+                <span className="flex-shrink-0 text-sm leading-none">{activePersona.emoji}</span>
+                <span className="truncate max-w-[90px] sm:max-w-[150px]">
+                  {activePersona.name}
+                </span>
+                <ChevronDown className="w-3.5 h-3.5 text-muted flex-shrink-0" />
+              </button>
+
+              {showPersonaDropdown && (
+                <>
+                  <div
+                    className="fixed inset-0 z-20"
+                    onClick={() => setShowPersonaDropdown(false)}
+                  />
+                  <div className="absolute left-0 mt-1.5 w-64 bg-card border border-border rounded-xl shadow-lg z-30 py-1.5 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
+                    <div className="px-3 py-1.5 text-[10px] font-bold text-muted border-b border-border mb-1 uppercase tracking-wider">
+                      Select Agent Persona
+                    </div>
+                    <div className="max-h-[260px] overflow-y-auto">
+                      {PERSONAS.map((p) => (
+                        <button
+                          key={p.id}
+                          onClick={() => {
+                            onUpdateSetting("selectedPersonaId", p.id);
+                            setShowPersonaDropdown(false);
+                          }}
+                          className="flex flex-col w-full px-3 py-2 text-left hover:bg-secondary transition-colors text-foreground cursor-pointer border-b border-border/20 last:border-b-0"
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <span className="font-bold text-xs flex items-center gap-1.5">
+                              <span className="text-sm">{p.emoji}</span>
+                              <span className="text-foreground">{p.name}</span>
+                              <span className="text-[9px] text-muted-foreground font-normal">({p.role})</span>
+                            </span>
+                            {settings.selectedPersonaId === p.id && (
+                              <Check className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                            )}
+                          </div>
+                          <span className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">
+                            {p.description}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Header Right Actions */}
@@ -161,7 +248,7 @@ export function ChatWindow({
             title="Configure connection settings"
             aria-label="Settings"
           >
-            <Settings className="w-5 h-5 text-muted hover:text-foreground transition-colors" />
+            <SettingsIcon className="w-5 h-5 text-muted hover:text-foreground transition-colors" />
           </Button>
         </div>
       </header>
@@ -228,7 +315,29 @@ export function ChatWindow({
       </div>
 
       {/* Message Input Bottom Bar */}
-      <footer className="bg-background/95 backdrop-blur-md px-4 py-3 pb-safe-bottom border-t border-border/40">
+      <footer className="bg-background/95 backdrop-blur-md px-4 py-3 pb-safe-bottom border-t border-border/40 space-y-2">
+        <div className="max-w-2xl mx-auto flex items-center justify-between px-3 text-[10px] text-muted select-none">
+          <div className="flex items-center gap-1">
+            <span className="font-semibold text-foreground/70">Context Window Used:</span>
+            <span className={`font-mono font-bold ${percentUsed > 90 ? 'text-destructive' : percentUsed > 75 ? 'text-amber-500 font-bold' : 'text-primary font-bold'}`}>
+              {totalTokens.toLocaleString()}
+            </span>
+            <span className="opacity-40">/</span>
+            <span className="font-mono text-muted">{maxTokens.toLocaleString()} tokens</span>
+            <span className={`font-mono px-1 rounded-sm ml-0.5 ${percentUsed > 90 ? 'bg-destructive/10 text-destructive' : percentUsed > 75 ? 'bg-amber-500/10 text-amber-500' : 'bg-primary/10 text-primary'}`}>
+              {Math.round(percentUsed)}%
+            </span>
+          </div>
+          <div className="w-24 sm:w-32 bg-secondary border border-border/40 rounded-full h-1.5 overflow-hidden">
+            <div 
+              className={`h-full rounded-full transition-all duration-300 ${
+                percentUsed > 90 ? 'bg-destructive' : percentUsed > 75 ? 'bg-amber-500' : 'bg-primary'
+              }`}
+              style={{ width: `${percentUsed}%` }}
+            />
+          </div>
+        </div>
+
         <form onSubmit={handleSubmit} className="max-w-2xl mx-auto relative flex items-center bg-card rounded-full border border-border/60 px-3 py-1.5 focus-within:border-primary/80 focus-within:ring-2 focus-within:ring-primary/20 transition-all duration-150">
           <textarea
             ref={textareaRef}
