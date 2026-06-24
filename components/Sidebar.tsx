@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Plus, MessageSquare, Trash2, Edit2, Check, X, Settings, Database } from "lucide-react";
+import { Plus, MessageSquare, Trash2, Edit2, Check, X, Settings } from "lucide-react";
 import { ChatSession } from "../hooks/useChat";
 import Button from "./ui/Button";
 
@@ -60,9 +60,11 @@ export function Sidebar({
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-border">
         <div className="flex items-center gap-2.5">
-          <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-primary text-primary-foreground shadow-sm">
-            <Database className="w-4 h-4" />
-          </div>
+          <img
+            src="/icon.png"
+            alt="Logo"
+            className="w-8 h-8 rounded-xl object-cover shadow-sm bg-secondary"
+          />
           <div>
             <h1 className="font-semibold text-sm tracking-tight text-foreground">Ilsa</h1>
             <p className="text-xxs text-muted leading-none">Local LLM Chat</p>
@@ -82,24 +84,24 @@ export function Sidebar({
       </div>
 
       {/* Action Area */}
-      <div className="p-3">
+      <div className="p-2">
         <Button
           variant="primary"
-          className="w-full flex items-center justify-center gap-2 rounded-2xl py-3"
+          className="w-full flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs"
           onClick={() => {
             onCreateNewChat();
             onClose(); // Auto close on mobile
           }}
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="w-3.5 h-3.5" />
           <span>New Chat</span>
         </Button>
       </div>
 
       {/* Chat History List */}
-      <div className="flex-1 overflow-y-auto px-2 py-2 space-y-1">
+      <div className="flex-1 overflow-y-auto px-2 py-1 space-y-0.5">
         {chats.length === 0 ? (
-          <div className="text-center py-8 px-4 text-xs text-muted">
+          <div className="text-center py-6 px-4 text-xs text-muted">
             No chats yet. Start one above!
           </div>
         ) : (
@@ -114,9 +116,9 @@ export function Sidebar({
                   onSelectChat(chat.id);
                   onClose(); // Auto close on mobile
                 }}
-                className={`group relative flex items-center justify-between rounded-xl px-3 py-2.5 text-sm transition-all duration-200 cursor-pointer ${isActive
+                className={`group relative flex items-center justify-between rounded-lg px-2.5 py-1.5 text-xs transition-all duration-200 cursor-pointer ${isActive
                     ? "bg-secondary text-secondary-foreground font-medium"
-                    : "hover:bg-secondary/40 text-muted-foreground hover:text-foreground"
+                    : "hover:bg-secondary/30 text-muted-foreground hover:text-foreground"
                   }`}
               >
                 {isEditing ? (

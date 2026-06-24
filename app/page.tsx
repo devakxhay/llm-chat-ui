@@ -9,7 +9,6 @@ import ChatWindow from "../components/ChatWindow";
 import Modal from "../components/ui/Modal";
 import SettingsPanel from "../components/SettingsPanel";
 import { useLocalStorage } from "../hooks/useLocalStorage";
-import { PERSONAS } from "../lib/personas";
 
 export default function Home() {
   const { settings, updateSetting, resetSettings } = useSettings();
@@ -62,17 +61,132 @@ export default function Home() {
     }
   }, [models, selectedModel, setSelectedModel]);
 
-  const activePersona = PERSONAS.find((p) => p.id === settings.selectedPersonaId) || PERSONAS[0];
-  const activeSystemPrompt = settings.selectedPersonaId === "custom" ? settings.systemPrompt : activePersona.systemPrompt;
-  const activeTemperature = settings.selectedPersonaId === "custom" ? settings.temperature : activePersona.temperature;
+  const [memories, setMemories] = useState<string[]>([]);
+  const [wasGenerating, setWasGenerating] = useState(false);
+
+  // Fetch memories helper
+  const fetchMemories = async () => {
+    try {
+      const res = await fetch("/api/kv?key=assistant-memory");
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.value)) {
+          setMemories(data.value);
+        } else {
+          setMemories([]);
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching memories in page:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (settings.enableMemory) {
+      fetchMemories();
+    } else {
+      setMemories([]);
+    }
+  }, [settings.enableMemory]);
+
+  // Sync memory when manual updates happen via command
+  useEffect(() => {
+    const handleUpdate = () => {
+      fetchMemories();
+    };
+    window.addEventListener("memories-updated", handleUpdate);
+    return () => {
+      window.removeEventListener("memories-updated", handleUpdate);
+    };
+  }, []);
+
+  const extractMemoriesInBackground = async (chatMessages: any[], currentMemories: string[]) => {
+    if (!settings.enableMemory || chatMessages.length < 2) return;
+    
+    // Take last 4 messages to avoid sending too much context
+    const recentMessages = chatMessages.slice(-4);
+    const conversationStr = recentMessages
+      .map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`)
+      .join("\n\n");
+
+    const extractionPrompt = `Analyze the following conversation and extract any new core facts, preferences, or details about the user that are worth remembering for future sessions (e.g. user's name, coding preferences, tech stack, job, interests).
+Do not extract transient details (like a specific bug they are debuging right now, or a greeting).
+Return ONLY the new facts as a JSON array of strings, e.g. ["User prefers TypeScript", "User's name is John"]. If no new details are found, return an empty array [].
+Existing memories to avoid duplicating:
+${currentMemories.map(m => `- ${m}`).join("\n")}
+
+Output ONLY valid JSON array of strings. Do not include markdown code block syntax.
+
+Conversation:
+${conversationStr}`;
+
+    try {
+      const response = await fetch("/api/ollama", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-ollama-url": settings.ollamaUrl,
+          "x-ollama-endpoint": "api/chat",
+        },
+        body: JSON.stringify({
+          model: selectedModel,
+          messages: [
+            { role: "system", content: "You are a JSON fact-extractor. Output ONLY a valid JSON array of strings, or an empty array []." },
+            { role: "user", content: extractionPrompt }
+          ],
+          stream: false,
+          options: {
+            temperature: 0.1,
+          }
+        }),
+      });
+
+      if (!response.ok) return;
+      const data = await response.json();
+      const content = data?.message?.content?.trim();
+      if (!content) return;
+      
+      const jsonStr = content.replace(/^```json\s*/i, "").replace(/```$/, "").trim();
+      const newFacts = JSON.parse(jsonStr);
+      if (Array.isArray(newFacts) && newFacts.length > 0) {
+        const filteredNewFacts = newFacts.filter(f => typeof f === "string" && f.trim() && !currentMemories.includes(f.trim()));
+        if (filteredNewFacts.length > 0) {
+          const updated = [...currentMemories, ...filteredNewFacts];
+          await fetch("/api/kv", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ key: "assistant-memory", value: updated }),
+          });
+          setMemories(updated);
+        }
+      }
+    } catch (e) {
+      console.warn("Background memory extraction failed:", e);
+    }
+  };
+
+  useEffect(() => {
+    if (wasGenerating && !isGenerating && activeChat) {
+      extractMemoriesInBackground(activeChat.messages, memories);
+    }
+    setWasGenerating(isGenerating);
+  }, [isGenerating, activeChat, memories, wasGenerating]);
+
+  const getSystemPromptWithMemories = () => {
+    let basePrompt = settings.systemPrompt;
+    if (settings.enableMemory && memories.length > 0) {
+      basePrompt += `\n\nAssistant Memories of User (Remember these details about the user):\n${memories.map(m => `- ${m}`).join("\n")}`;
+    }
+    return basePrompt;
+  };
 
   const handleSendMessage = (content: string) => {
     sendMessage(
       content,
       settings.ollamaUrl,
       selectedModel,
-      activeSystemPrompt,
-      activeTemperature,
+      getSystemPromptWithMemories(),
+      settings.temperature,
       settings.contextLimit,
       chatStream
     );
@@ -81,8 +195,8 @@ export default function Home() {
   const handleRegenerate = () => {
     regenerateLastMessage(
       settings.ollamaUrl,
-      activeSystemPrompt,
-      activeTemperature,
+      getSystemPromptWithMemories(),
+      settings.temperature,
       settings.contextLimit,
       chatStream
     );

@@ -201,6 +201,104 @@ export function useChat() {
         currentChat = createNewChat(model);
       }
 
+      // Intercept memory commands
+      const trimmedLower = content.trim().toLowerCase();
+      if (trimmedLower.startsWith("/remember ") || trimmedLower === "/memories" || trimmedLower.startsWith("/forget ")) {
+        let reply = "";
+        try {
+          const res = await fetch("/api/kv?key=assistant-memory");
+          let currentMemories: string[] = [];
+          if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data.value)) {
+              currentMemories = data.value;
+            }
+          }
+
+          if (trimmedLower.startsWith("/remember ")) {
+            const fact = content.slice(10).trim();
+            if (fact) {
+              if (!currentMemories.includes(fact)) {
+                currentMemories.push(fact);
+                await fetch("/api/kv", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ key: "assistant-memory", value: currentMemories }),
+                });
+              }
+              reply = `🧠 I have saved that to my memory:\n*"${fact}"*`;
+            } else {
+              reply = `⚠️ Please specify a fact to remember (e.g., \`/remember I use TypeScript\`).`;
+            }
+          } else if (trimmedLower.startsWith("/forget ")) {
+            const term = content.slice(8).trim();
+            if (term) {
+              const beforeCount = currentMemories.length;
+              currentMemories = currentMemories.filter(
+                (m) => !m.toLowerCase().includes(term.toLowerCase())
+              );
+              if (currentMemories.length < beforeCount) {
+                await fetch("/api/kv", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ key: "assistant-memory", value: currentMemories }),
+                });
+                reply = `🧠 I have forgotten memories matching: *"${term}"*`;
+              } else {
+                reply = `⚠️ No matching memories found for: *"${term}"*`;
+              }
+            } else {
+              reply = `⚠️ Please specify a term or fact to forget (e.g., \`/forget TypeScript\`).`;
+            }
+          } else if (trimmedLower === "/memories") {
+            if (currentMemories.length === 0) {
+              reply = `🧠 My memory is currently empty.`;
+            } else {
+              reply = `🧠 Here are the details I remember about you:\n\n${currentMemories
+                .map((m) => `- ${m}`)
+                .join("\n")}`;
+            }
+          }
+        } catch (e: any) {
+          reply = `⚠️ Failed to process memory command: ${e.message || e}`;
+        }
+
+        const userMsg: Message = {
+          id: generateUUID(),
+          role: "user",
+          content,
+          timestamp: Date.now(),
+        };
+
+        const assistantMsg: Message = {
+          id: generateUUID(),
+          role: "assistant",
+          content: reply,
+          timestamp: Date.now(),
+        };
+
+        const isNewChat = currentChat.title === "New Chat";
+        const currentTitle = isNewChat ? (content.slice(0, 30) + (content.length > 30 ? "..." : "")) : currentChat.title;
+
+        setChats((prev) =>
+          prev.map((c) =>
+            c.id === currentChat!.id
+              ? {
+                  ...c,
+                  title: currentTitle,
+                  model,
+                  messages: [...c.messages, userMsg, assistantMsg],
+                }
+              : c
+          )
+        );
+
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("memories-updated"));
+        }
+        return;
+      }
+
       // Update model of existing chat if it is empty
       if (currentChat.messages.length === 0 && currentChat.model !== model) {
         currentChat.model = model;

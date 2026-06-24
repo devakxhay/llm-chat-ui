@@ -12,8 +12,15 @@ interface MessageItemProps {
 }
 
 export function MessageItem({ message, isLast, onRegenerate, isGenerating }: MessageItemProps) {
+  const [copiedCodeIdx, setCopiedCodeIdx] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
   const isUser = message.role === "user";
+
+  const handleCopyCode = (code: string, idx: number) => {
+    navigator.clipboard.writeText(code);
+    setCopiedCodeIdx(idx);
+    setTimeout(() => setCopiedCodeIdx(null), 2000);
+  };
 
   const handleCopy = () => {
     navigator.clipboard.writeText(message.content);
@@ -21,11 +28,40 @@ export function MessageItem({ message, isLast, onRegenerate, isGenerating }: Mes
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // Helper to parse inline bold/code/italic tags
+  const parseInline = (text: string) => {
+    const subParts = text.split(/(\`[^\`]+\`|\*\*[^*]+\*\*|\*[^*]+\*)/g);
+    return subParts.map((subPart, subIndex) => {
+      if (subPart.startsWith("`") && subPart.endsWith("`")) {
+        return (
+          <code key={subIndex} className="px-1 py-0.5 rounded bg-secondary font-mono text-[10px] font-semibold text-primary">
+            {subPart.slice(1, -1)}
+          </code>
+        );
+      }
+      if (subPart.startsWith("**") && subPart.endsWith("**")) {
+        return (
+          <strong key={subIndex} className="font-semibold text-foreground">
+            {subPart.slice(2, -2)}
+          </strong>
+        );
+      }
+      if (subPart.startsWith("*") && subPart.endsWith("*")) {
+        return (
+          <em key={subIndex} className="italic text-foreground/85">
+            {subPart.slice(1, -1)}
+          </em>
+        );
+      }
+      return subPart;
+    });
+  };
+
   // Safe simple parser to render code blocks, lists, bold text, and paragraphs
   const renderFormattedContent = (text: string) => {
     if (!text) {
       return (
-        <div className="flex items-center gap-1.5 py-1.5 px-0.5" aria-label="Typing...">
+        <div className="flex items-center gap-1.5 py-1 px-0.5" aria-label="Typing...">
           <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/70 animate-typing-dot" style={{ animationDelay: "0ms" }} />
           <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/70 animate-typing-dot" style={{ animationDelay: "150ms" }} />
           <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/70 animate-typing-dot" style={{ animationDelay: "300ms" }} />
@@ -41,47 +77,86 @@ export function MessageItem({ message, isLast, onRegenerate, isGenerating }: Mes
         const lines = part.slice(3, -3).trim().split("\n");
         const language = lines[0] && !lines[0].includes(" ") ? lines[0] : "";
         const code = language ? lines.slice(1).join("\n") : lines.join("\n");
+        const blockIdx = index;
 
         return (
-          <div key={index} className="my-3 overflow-hidden rounded-xl border border-border/80 bg-stone-900 text-stone-100 font-mono text-xs shadow-inner">
-            {language && (
-              <div className="flex items-center justify-between px-4 py-1.5 bg-stone-800 text-stone-400 border-b border-stone-800 text-[10px] uppercase font-semibold">
-                <span>{language}</span>
-                <span className="font-sans">Code</span>
-              </div>
-            )}
-            <pre className="p-4 overflow-x-auto">
+          <div key={index} className="my-2 overflow-hidden rounded-lg border border-border/80 bg-[#1e1e1e] text-[#d4d4d4] font-mono text-xs shadow-inner">
+            <div className="flex items-center justify-between px-3 py-1 bg-[#252526] text-stone-400 border-b border-border/40 text-[9px] uppercase font-semibold">
+              <span>{language || "code"}</span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleCopyCode(code, blockIdx);
+                }}
+                className="hover:text-foreground text-[9px] transition-colors flex items-center gap-1 font-sans cursor-pointer lowercase"
+              >
+                {copiedCodeIdx === blockIdx ? (
+                  <>
+                    <Check className="w-2.5 h-2.5 text-green-500" />
+                    <span>copied</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-2.5 h-2.5" />
+                    <span>copy</span>
+                  </>
+                )}
+              </button>
+            </div>
+            <pre className="p-3 overflow-x-auto leading-normal">
               <code>{code}</code>
             </pre>
           </div>
         );
       }
 
-      // Inline code and basic line breaks / styling
-      const subParts = part.split(/(\`[^\`]+\`)/g);
+      // Inline and structured blocks
+      const lines = part.split("\n");
       return (
-        <div key={index} className="space-y-2 whitespace-pre-wrap break-words leading-relaxed text-sm">
-          {subParts.map((subPart, subIndex) => {
-            if (subPart.startsWith("`") && subPart.endsWith("`")) {
+        <div key={index} className="space-y-1">
+          {lines.map((line, lineIdx) => {
+            const trimmedLine = line.trim();
+
+            if (trimmedLine.startsWith("### ")) {
+              return <h4 key={lineIdx} className="text-xs font-bold text-foreground mt-1 mb-0.5">{parseInline(trimmedLine.slice(4))}</h4>;
+            }
+            if (trimmedLine.startsWith("## ")) {
+              return <h3 key={lineIdx} className="text-sm font-bold text-foreground mt-2 mb-0.5">{parseInline(trimmedLine.slice(3))}</h3>;
+            }
+            if (trimmedLine.startsWith("# ")) {
+              return <h2 key={lineIdx} className="text-base font-bold text-foreground mt-2 mb-1">{parseInline(trimmedLine.slice(2))}</h2>;
+            }
+
+            // Bullet Lists
+            if (trimmedLine.startsWith("- ") || trimmedLine.startsWith("* ")) {
               return (
-                <code key={subIndex} className="px-1.5 py-0.5 rounded-md bg-secondary/80 font-mono text-xs font-semibold text-primary">
-                  {subPart.slice(1, -1)}
-                </code>
+                <div key={lineIdx} className="flex items-start gap-1 ml-1 text-xs leading-normal font-sans text-foreground/90">
+                  <span className="text-primary mt-1 text-[8px]">•</span>
+                  <span className="flex-1">{parseInline(trimmedLine.slice(2))}</span>
+                </div>
               );
             }
 
-            // Bold styling parser
-            const boldParts = subPart.split(/(\*\*[^*]+\*\*)/g);
-            return boldParts.map((boldPart, boldIndex) => {
-              if (boldPart.startsWith("**") && boldPart.endsWith("**")) {
-                return (
-                  <strong key={boldIndex} className="font-semibold text-foreground">
-                    {boldPart.slice(2, -2)}
-                  </strong>
-                );
-              }
-              return boldPart;
-            });
+            // Numbered Lists
+            const numMatch = trimmedLine.match(/^(\d+)\.\s(.*)/);
+            if (numMatch) {
+              return (
+                <div key={lineIdx} className="flex items-start gap-1 ml-1 text-xs leading-normal font-sans text-foreground/90">
+                  <span className="text-primary font-mono text-[8px] font-bold">{numMatch[1]}.</span>
+                  <span className="flex-1">{parseInline(numMatch[2])}</span>
+                </div>
+              );
+            }
+
+            if (!trimmedLine) {
+              return <div key={lineIdx} className="h-1" />;
+            }
+
+            return (
+              <p key={lineIdx} className="text-xs sm:text-sm leading-normal text-foreground/90 font-sans break-words">
+                {parseInline(line)}
+              </p>
+            );
           })}
         </div>
       );
@@ -89,10 +164,10 @@ export function MessageItem({ message, isLast, onRegenerate, isGenerating }: Mes
   };
 
   return (
-    <div className={`flex w-full gap-3 ${isUser ? "justify-end" : "justify-start"} animate-in fade-in duration-200`}>
-      <div className="flex flex-col max-w-[85%] sm:max-w-[75%] gap-0.5 group">
+    <div className={`flex w-full gap-2 ${isUser ? "justify-end" : "justify-start"} animate-in fade-in duration-200`}>
+      <div className="flex flex-col max-w-[90%] sm:max-w-[80%] gap-0.5 group">
         <div
-          className={`px-3.5 py-1.5 rounded-2xl shadow-xxs ${isUser
+          className={`px-3 py-1 rounded-xl shadow-xxs ${isUser
               ? "bg-primary text-primary-foreground rounded-br-xs"
               : "bg-card text-foreground border border-border/50 rounded-bl-xs"
             }`}

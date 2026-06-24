@@ -5,7 +5,6 @@ import { Send, Menu, Settings as SettingsIcon, ChevronDown, Check } from "lucide
 import { ChatSession } from "../hooks/useChat";
 import { OllamaModel } from "../hooks/useOllama";
 import { Settings } from "../hooks/useSettings";
-import { PERSONAS } from "../lib/personas";
 import MessageItem from "./MessageItem";
 import Button from "./ui/Button";
 
@@ -47,9 +46,6 @@ export function ChatWindow({
 }: ChatWindowProps) {
   const [input, setInput] = useState("");
   const [showModelDropdown, setShowModelDropdown] = useState(false);
-  const [showPersonaDropdown, setShowPersonaDropdown] = useState(false);
-
-  const activePersona = PERSONAS.find((p) => p.id === settings.selectedPersonaId) || PERSONAS[0];
 
   // Token calculation helpers
   const estimateTokens = (text: string): number => {
@@ -182,61 +178,6 @@ export function ChatWindow({
             )}
           </div>
 
-          {/* Persona Selector Dropdown */}
-          {isChatModel && (
-            <div className="relative">
-              <button
-                onClick={() => setShowPersonaDropdown(!showPersonaDropdown)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-secondary/60 hover:bg-secondary border border-border/40 text-xs font-semibold transition-all text-foreground cursor-pointer"
-              >
-                <span className="flex-shrink-0 text-sm leading-none">{activePersona.emoji}</span>
-                <span className="truncate max-w-[90px] sm:max-w-[150px]">
-                  {activePersona.name}
-                </span>
-                <ChevronDown className="w-3.5 h-3.5 text-muted flex-shrink-0" />
-              </button>
-
-              {showPersonaDropdown && (
-                <>
-                  <div
-                    className="fixed inset-0 z-20"
-                    onClick={() => setShowPersonaDropdown(false)}
-                  />
-                  <div className="absolute left-0 mt-1.5 w-64 bg-card border border-border rounded-xl shadow-lg z-30 py-1.5 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
-                    <div className="px-3 py-1.5 text-[10px] font-bold text-muted border-b border-border mb-1 uppercase tracking-wider">
-                      Select Agent Persona
-                    </div>
-                    <div className="max-h-[260px] overflow-y-auto">
-                      {PERSONAS.map((p) => (
-                        <button
-                          key={p.id}
-                          onClick={() => {
-                            onUpdateSetting("selectedPersonaId", p.id);
-                            setShowPersonaDropdown(false);
-                          }}
-                          className="flex flex-col w-full px-3 py-2 text-left hover:bg-secondary transition-colors text-foreground cursor-pointer border-b border-border/20 last:border-b-0"
-                        >
-                          <div className="flex items-center justify-between w-full">
-                            <span className="font-bold text-xs flex items-center gap-1.5">
-                              <span className="text-sm">{p.emoji}</span>
-                              <span className="text-foreground">{p.name}</span>
-                              <span className="text-[9px] text-muted-foreground font-normal">({p.role})</span>
-                            </span>
-                            {settings.selectedPersonaId === p.id && (
-                              <Check className="w-3.5 h-3.5 text-primary flex-shrink-0" />
-                            )}
-                          </div>
-                          <span className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">
-                            {p.description}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
         </div>
 
         {/* Header Right Actions */}
@@ -254,31 +195,31 @@ export function ChatWindow({
       </header>
 
       {/* Main Chat Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div className="flex-1 overflow-y-auto p-3 space-y-2">
         {!activeChat || activeChat.messages.length === 0 ? (
           /* Empty / Welcome State */
-          <div className="max-w-2xl mx-auto flex flex-col items-center justify-center h-full min-h-[60vh] text-center px-4 space-y-8 animate-in fade-in duration-300">
-            <div className="space-y-3.5">
-              <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+          <div className="max-w-2xl mx-auto flex flex-col items-center justify-center h-full min-h-[50vh] text-center px-4 space-y-5 animate-in fade-in duration-300">
+            <div className="space-y-2.5">
+              <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
                 Operative Status: Active
               </h2>
-              <p className="text-sm text-muted max-w-md mx-auto leading-relaxed">
+              <p className="text-xs text-muted max-w-md mx-auto leading-normal">
                 Establish a connection to the secure server and choose an intelligence model to begin communication.
               </p>
             </div>
 
             {/* Quick Prompt Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 w-full">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full">
               {QUICK_PROMPTS.map((prompt, index) => (
                 <button
                   key={index}
                   onClick={() => handleQuickPromptClick(prompt.text)}
-                  className="flex flex-col text-left p-4 rounded-2xl bg-card hover:bg-secondary/40 border border-border/40 hover:border-border transition-all duration-200 shadow-xxs hover:shadow-xs group cursor-pointer"
+                  className="flex flex-col text-left p-3 rounded-xl bg-card hover:bg-secondary/40 border border-border/40 hover:border-border transition-all duration-200 shadow-xxs hover:shadow-xs group cursor-pointer"
                 >
-                  <span className="font-semibold text-xs text-foreground group-hover:text-primary transition-colors mb-1">
+                  <span className="font-semibold text-xxs text-foreground group-hover:text-primary transition-colors mb-0.5">
                     {prompt.label}
                   </span>
-                  <span className="text-xxs text-muted line-clamp-2">
+                  <span className="text-[10px] text-muted line-clamp-2">
                     {prompt.text}
                   </span>
                 </button>
@@ -287,7 +228,7 @@ export function ChatWindow({
           </div>
         ) : (
           /* Messages Feed */
-          <div className="max-w-2xl mx-auto space-y-3.5 pb-2">
+          <div className="max-w-2xl mx-auto space-y-2 pb-1">
             {activeChat.messages.map((message, index) => {
               // Hide empty assistant messages, unless it's the last one which is generating
               if (

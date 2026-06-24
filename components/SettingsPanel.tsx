@@ -2,9 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { Settings } from "../hooks/useSettings";
-import { Server, HelpCircle, Sun, Moon, Trash2, CheckCircle2, AlertCircle } from "lucide-react";
+import { Server, HelpCircle, Sun, Moon, Trash2, CheckCircle2, AlertCircle, Brain, Plus, X } from "lucide-react";
 import Button from "./ui/Button";
-import { PERSONAS } from "../lib/personas";
 
 interface SettingsPanelProps {
   settings: Settings;
@@ -26,7 +25,59 @@ export function SettingsPanel({
   const [localUrl, setLocalUrl] = useState(settings.ollamaUrl);
   const [testResult, setTestResult] = useState<"success" | "error" | null>(null);
 
-  const activePersona = PERSONAS.find((p) => p.id === settings.selectedPersonaId) || PERSONAS[0];
+  const [memories, setMemories] = useState<string[]>([]);
+  const [newMemory, setNewMemory] = useState("");
+  const [isLoadingMemories, setIsLoadingMemories] = useState(false);
+
+  useEffect(() => {
+    if (settings.enableMemory) {
+      fetchMemories();
+    }
+  }, [settings.enableMemory]);
+
+  const fetchMemories = async () => {
+    setIsLoadingMemories(true);
+    try {
+      const res = await fetch("/api/kv?key=assistant-memory");
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.value)) {
+          setMemories(data.value);
+        } else {
+          setMemories([]);
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching memories:", err);
+    } finally {
+      setIsLoadingMemories(false);
+    }
+  };
+
+  const saveMemories = async (updated: string[]) => {
+    setMemories(updated);
+    try {
+      await fetch("/api/kv", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: "assistant-memory", value: updated }),
+      });
+    } catch (err) {
+      console.error("Error saving memories:", err);
+    }
+  };
+
+  const handleAddMemory = () => {
+    if (!newMemory.trim()) return;
+    const updated = [...memories, newMemory.trim()];
+    saveMemories(updated);
+    setNewMemory("");
+  };
+
+  const handleDeleteMemory = (index: number) => {
+    const updated = memories.filter((_, i) => i !== index);
+    saveMemories(updated);
+  };
 
   // Sync settings when loaded
   useEffect(() => {
@@ -96,42 +147,21 @@ export function SettingsPanel({
       {/* Model Parameters */}
       <div className="space-y-4">
         <div className="space-y-1.5">
-          <label className="font-semibold text-foreground block">Agent Persona Character</label>
-          <select
-            value={settings.selectedPersonaId || "ilsa"}
-            onChange={(e) => updateSetting("selectedPersonaId", e.target.value)}
-            className="w-full bg-card border border-border focus:border-primary/80 focus:ring-2 focus:ring-primary/20 rounded-xl px-3 py-2 text-xs focus:outline-none text-foreground font-sans cursor-pointer"
-          >
-            {PERSONAS.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.emoji} {p.name} ({p.role})
-              </option>
-            ))}
-          </select>
-          {settings.selectedPersonaId !== "custom" && (
-            <p className="text-[10px] text-muted-foreground mt-1">
-              Currently active: <strong className="text-foreground">{activePersona.name} ({activePersona.role})</strong>. Prompt and temperature parameters are pre-configured. Select "Custom Operative" to edit manually.
-            </p>
-          )}
-        </div>
-
-        <div className="space-y-1.5">
           <label className="font-semibold text-foreground block">System Prompt</label>
           <textarea
-            value={settings.selectedPersonaId === "custom" ? settings.systemPrompt : activePersona.systemPrompt}
+            value={settings.systemPrompt}
             onChange={(e) => updateSetting("systemPrompt", e.target.value)}
-            disabled={settings.selectedPersonaId !== "custom"}
             rows={3}
-            placeholder={settings.selectedPersonaId === "custom" ? "Introduce system instructions..." : "Select Custom Operative to edit..."}
-            className={`w-full bg-card border border-border focus:border-primary/80 focus:ring-2 focus:ring-primary/20 rounded-xl px-3 py-2 text-xs focus:outline-none text-foreground ${settings.selectedPersonaId !== "custom" ? "opacity-60 cursor-not-allowed bg-secondary/30" : ""}`}
+            placeholder="Introduce system instructions..."
+            className="w-full bg-card border border-border focus:border-primary/80 focus:ring-2 focus:ring-primary/20 rounded-xl px-3 py-2 text-xs focus:outline-none text-foreground"
           />
         </div>
 
         <div className="space-y-2">
           <div className="flex items-center justify-between text-xs font-semibold text-foreground">
-            <span>Temperature ({settings.selectedPersonaId === "custom" ? settings.temperature : activePersona.temperature})</span>
+            <span>Temperature ({settings.temperature})</span>
             <span className="text-muted font-normal">
-              {(settings.selectedPersonaId === "custom" ? settings.temperature : activePersona.temperature) <= 0.3 ? "Precise" : (settings.selectedPersonaId === "custom" ? settings.temperature : activePersona.temperature) >= 1.0 ? "Creative" : "Balanced"}
+              {settings.temperature <= 0.3 ? "Precise" : settings.temperature >= 1.0 ? "Creative" : "Balanced"}
             </span>
           </div>
           <input
@@ -139,10 +169,9 @@ export function SettingsPanel({
             min="0.1"
             max="1.5"
             step="0.1"
-            value={settings.selectedPersonaId === "custom" ? settings.temperature : activePersona.temperature}
+            value={settings.temperature}
             onChange={(e) => updateSetting("temperature", parseFloat(e.target.value))}
-            disabled={settings.selectedPersonaId !== "custom"}
-            className={`w-full accent-primary bg-secondary h-1.5 rounded-full cursor-pointer ${settings.selectedPersonaId !== "custom" ? "opacity-60 cursor-not-allowed" : ""}`}
+            className="w-full accent-primary bg-secondary h-1.5 rounded-full cursor-pointer"
           />
         </div>
 
@@ -175,6 +204,84 @@ export function SettingsPanel({
             />
           </div>
         </div>
+      </div>
+
+      <hr className="border-border/60" />
+
+      {/* Memory Settings Section */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <label className="flex items-center gap-2 font-semibold text-foreground">
+            <Brain className="w-4 h-4 text-primary" />
+            <span>Assistant Memory</span>
+          </label>
+          <button
+            onClick={() => updateSetting("enableMemory", !settings.enableMemory)}
+            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+              settings.enableMemory ? "bg-primary" : "bg-secondary"
+            }`}
+          >
+            <span
+              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                settings.enableMemory ? "translate-x-4" : "translate-x-0"
+              }`}
+            />
+          </button>
+        </div>
+
+        {settings.enableMemory && (
+          <div className="space-y-3">
+            <p className="text-[11px] text-muted-foreground leading-normal font-sans">
+              The assistant will remember these key details about you across chats. You can add or delete memories manually here, or let them extract dynamically during conversation.
+            </p>
+
+            {/* List memories */}
+            <div className="bg-secondary/30 rounded-xl border border-border/50 max-h-[160px] overflow-y-auto p-2 space-y-1.5">
+              {isLoadingMemories ? (
+                <div className="text-xxs text-muted p-2 text-center">Loading memories...</div>
+              ) : memories.length === 0 ? (
+                <div className="text-xxs text-muted p-2 text-center">No memories stored yet.</div>
+              ) : (
+                memories.map((fact, idx) => (
+                  <div key={idx} className="flex items-start justify-between gap-2 bg-card/60 px-2.5 py-1.5 rounded-lg border border-border/20 text-xs">
+                    <span className="text-foreground leading-normal font-sans">{fact}</span>
+                    <button
+                      onClick={() => handleDeleteMemory(idx)}
+                      className="text-muted-foreground hover:text-destructive transition-colors mt-0.5 cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Add memory input */}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Remember a new fact..."
+                value={newMemory}
+                onChange={(e) => setNewMemory(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleAddMemory();
+                  }
+                }}
+                className="flex-1 bg-card border border-border focus:border-primary/80 focus:ring-2 focus:ring-primary/20 rounded-xl px-3 py-1.5 text-xs focus:outline-none text-foreground font-sans"
+              />
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleAddMemory}
+                className="px-2.5 py-1.5 rounded-xl shrink-0 cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       <hr className="border-border/60" />

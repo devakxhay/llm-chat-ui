@@ -9,16 +9,16 @@ export interface Settings {
   temperature: number;
   theme: "light" | "dark";
   contextLimit: number;
-  selectedPersonaId: string;
+  enableMemory: boolean;
 }
 
 const DEFAULT_SETTINGS: Settings = {
   ollamaUrl: "http://localhost:11434",
-  systemPrompt: "You are Ilsa, the highly capable ex-MI6 operative. Speak with a refined, sharp, and calculated tone. Keep responses concise, strategic, and intelligent. You are resourcefully assisting the user like a rogue agent partner.",
+  systemPrompt: "You are a helpful, respectful, and honest assistant. Always answer as helpfully as possible while being safe.",
   temperature: 0.7,
   theme: "dark",
   contextLimit: 2048,
-  selectedPersonaId: "ilsa",
+  enableMemory: true,
 };
 
 export function useSettings() {
