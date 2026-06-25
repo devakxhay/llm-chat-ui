@@ -140,11 +140,9 @@ export function useAutonomousChat({
         .join("\n\n");
 
       const prompt = `You are simulating a contact on a real chat service (like WhatsApp/Telegram). 
-The user is currently away. Based on the conversation history below, send a follow-up message to the user.
-It could be:
-- Asking a casual follow-up question related to the topic of discussion.
-- Bringing up an interesting idea, thought, or checking in.
-- Mentioning something related to past memories or topics.
+The user has been quiet for a while. Based strictly on the conversation history below, send a natural follow-up message that directly continues from, elaborates on, or references the last topic discussed.
+
+Do NOT ask random questions, check in out of nowhere, or introduce new unrelated topics. The message must feel like a logical next step or direct continuation of the immediate conversation.
 
 Keep it very short, natural, casual, and brief like a quick text message (no formal greetings, no robotic language, max 2 sentences). Respond ONLY with the text message content. Do not add quotes.
 
@@ -162,7 +160,6 @@ ${conversationHistoryString}`;
           body: JSON.stringify({
             model: selectedModel,
             messages: [
-              { role: "system", content: "You are a casual friend sending a short text message." },
               { role: "user", content: prompt }
             ],
             stream: false,

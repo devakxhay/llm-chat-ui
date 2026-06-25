@@ -29,26 +29,38 @@ export function MessageItem({ message, isLast, onRegenerate, isGenerating }: Mes
   };
 
   // Helper to parse inline bold/code/italic tags
-  const parseInline = (text: string) => {
+  const parseInline = (text: string, isUser: boolean) => {
     const subParts = text.split(/(\`[^\`]+\`|\*\*[^*]+\*\*|\*[^*]+\*)/g);
     return subParts.map((subPart, subIndex) => {
       if (subPart.startsWith("`") && subPart.endsWith("`")) {
         return (
-          <code key={subIndex} className="px-1 py-0.5 rounded bg-secondary font-mono text-[10px] font-semibold text-primary">
+          <code key={subIndex} className={`px-1.5 py-0.5 rounded font-mono text-[10px] font-semibold ${
+            isUser 
+              ? "bg-white/20 text-white border border-white/10" 
+              : "bg-secondary text-primary border border-border/40"
+          }`}>
             {subPart.slice(1, -1)}
           </code>
         );
       }
       if (subPart.startsWith("**") && subPart.endsWith("**")) {
         return (
-          <strong key={subIndex} className="font-semibold text-foreground">
+          <strong key={subIndex} className={`font-bold ${
+            isUser 
+              ? "text-amber-200 dark:text-amber-100 drop-shadow-sm font-extrabold" 
+              : "text-indigo-600 dark:text-indigo-400 font-extrabold"
+          }`}>
             {subPart.slice(2, -2)}
           </strong>
         );
       }
       if (subPart.startsWith("*") && subPart.endsWith("*")) {
         return (
-          <em key={subIndex} className="italic text-foreground/85">
+          <em key={subIndex} className={`italic font-semibold ${
+            isUser 
+              ? "text-sky-200 dark:text-sky-100" 
+              : "text-emerald-600 dark:text-emerald-500"
+          }`}>
             {subPart.slice(1, -1)}
           </em>
         );
@@ -118,21 +130,21 @@ export function MessageItem({ message, isLast, onRegenerate, isGenerating }: Mes
             const trimmedLine = line.trim();
 
             if (trimmedLine.startsWith("### ")) {
-              return <h4 key={lineIdx} className="text-xs font-bold text-foreground mt-1 mb-0.5">{parseInline(trimmedLine.slice(4))}</h4>;
+              return <h4 key={lineIdx} className="text-xs font-bold mt-1 mb-0.5">{parseInline(trimmedLine.slice(4), isUser)}</h4>;
             }
             if (trimmedLine.startsWith("## ")) {
-              return <h3 key={lineIdx} className="text-sm font-bold text-foreground mt-2 mb-0.5">{parseInline(trimmedLine.slice(3))}</h3>;
+              return <h3 key={lineIdx} className="text-sm font-bold mt-2 mb-0.5">{parseInline(trimmedLine.slice(3), isUser)}</h3>;
             }
             if (trimmedLine.startsWith("# ")) {
-              return <h2 key={lineIdx} className="text-base font-bold text-foreground mt-2 mb-1">{parseInline(trimmedLine.slice(2))}</h2>;
+              return <h2 key={lineIdx} className="text-base font-bold mt-2 mb-1">{parseInline(trimmedLine.slice(2), isUser)}</h2>;
             }
 
             // Bullet Lists
             if (trimmedLine.startsWith("- ") || trimmedLine.startsWith("* ")) {
               return (
-                <div key={lineIdx} className="flex items-start gap-1 ml-1 text-xs leading-normal font-sans text-foreground/90">
-                  <span className="text-primary mt-1 text-[8px]">•</span>
-                  <span className="flex-1">{parseInline(trimmedLine.slice(2))}</span>
+                <div key={lineIdx} className={`flex items-start gap-1 ml-1 text-xs leading-normal font-sans ${isUser ? "text-primary-foreground/90" : "text-foreground/90"}`}>
+                  <span className={`${isUser ? "text-white/80" : "text-primary"} mt-1 text-[8px]`}>•</span>
+                  <span className="flex-1">{parseInline(trimmedLine.slice(2), isUser)}</span>
                 </div>
               );
             }
@@ -141,9 +153,9 @@ export function MessageItem({ message, isLast, onRegenerate, isGenerating }: Mes
             const numMatch = trimmedLine.match(/^(\d+)\.\s(.*)/);
             if (numMatch) {
               return (
-                <div key={lineIdx} className="flex items-start gap-1 ml-1 text-xs leading-normal font-sans text-foreground/90">
-                  <span className="text-primary font-mono text-[8px] font-bold">{numMatch[1]}.</span>
-                  <span className="flex-1">{parseInline(numMatch[2])}</span>
+                <div key={lineIdx} className={`flex items-start gap-1 ml-1 text-xs leading-normal font-sans ${isUser ? "text-primary-foreground/90" : "text-foreground/90"}`}>
+                  <span className={`${isUser ? "text-white/80" : "text-primary"} font-mono text-[8px] font-bold`}>{numMatch[1]}.</span>
+                  <span className="flex-1">{parseInline(numMatch[2], isUser)}</span>
                 </div>
               );
             }
@@ -153,8 +165,8 @@ export function MessageItem({ message, isLast, onRegenerate, isGenerating }: Mes
             }
 
             return (
-              <p key={lineIdx} className="text-xs sm:text-sm leading-normal text-foreground/90 font-sans break-words">
-                {parseInline(line)}
+              <p key={lineIdx} className={`text-xs sm:text-sm leading-normal font-sans break-words ${isUser ? "text-primary-foreground/90" : "text-foreground/90"}`}>
+                {parseInline(line, isUser)}
               </p>
             );
           })}
