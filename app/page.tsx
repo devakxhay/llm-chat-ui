@@ -9,6 +9,8 @@ import ChatWindow from "../components/ChatWindow";
 import Modal from "../components/ui/Modal";
 import SettingsPanel from "../components/SettingsPanel";
 import { useLocalStorage } from "../hooks/useLocalStorage";
+import { useNotification } from "../hooks/useNotification";
+import { useAutonomousChat } from "../hooks/useAutonomousChat";
 
 export default function Home() {
   const { settings, updateSetting, resetSettings } = useSettings();
@@ -34,11 +36,24 @@ export default function Home() {
     clearAllChats,
     sendMessage,
     regenerateLastMessage,
+    addAssistantMessage,
   } = useChat();
+
+  const { showNotification } = useNotification();
 
   const [selectedModel, setSelectedModel] = useLocalStorage<string>("ilsa-selected-model", "");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Run the autonomous background messaging simulation
+  const autonomousChatDebug = useAutonomousChat({
+    activeChat,
+    selectedModel,
+    settings,
+    isGenerating,
+    addAssistantMessage,
+    showNotification,
+  });
 
   // Sync Ollama connection and fetch models on load and URL change
   useEffect(() => {
@@ -233,6 +248,7 @@ ${conversationStr}`;
         connectionStatus={connectionStatus}
         settings={settings}
         onUpdateSetting={updateSetting}
+        autonomousChatDebug={autonomousChatDebug}
       />
 
       {/* Settings Modal Dialog */}

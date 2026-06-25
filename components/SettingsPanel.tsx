@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect } from "react";
 import { Settings } from "../hooks/useSettings";
-import { Server, HelpCircle, Sun, Moon, Trash2, CheckCircle2, AlertCircle, Brain, Plus, X } from "lucide-react";
+import { Server, HelpCircle, Sun, Moon, Trash2, CheckCircle2, AlertCircle, Brain, Plus, X, MessageSquare, Bell } from "lucide-react";
 import Button from "./ui/Button";
+import { useNotification } from "../hooks/useNotification";
 
 interface SettingsPanelProps {
   settings: Settings;
@@ -22,6 +23,7 @@ export function SettingsPanel({
   onTestConnection,
   connectionStatus,
 }: SettingsPanelProps) {
+  const { permission, requestPermission } = useNotification();
   const [localUrl, setLocalUrl] = useState(settings.ollamaUrl);
   const [testResult, setTestResult] = useState<"success" | "error" | null>(null);
 
@@ -279,6 +281,93 @@ export function SettingsPanel({
               >
                 <Plus className="w-3.5 h-3.5" />
               </Button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <hr className="border-border/60" />
+
+      {/* Autonomous Messaging and Notifications */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <label className="flex items-center gap-2 font-semibold text-foreground">
+            <MessageSquare className="w-4 h-4 text-primary" />
+            <span>Autonomous Messaging</span>
+          </label>
+          <button
+            onClick={() => updateSetting("enableSimulation", !settings.enableSimulation)}
+            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+              settings.enableSimulation ? "bg-primary" : "bg-secondary"
+            }`}
+          >
+            <span
+              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                settings.enableSimulation ? "translate-x-4" : "translate-x-0"
+              }`}
+            />
+          </button>
+        </div>
+
+        {settings.enableSimulation && (
+          <div className="space-y-4 pl-6 border-l border-border/60 ml-2 font-sans">
+            {/* Notification toggle */}
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 text-xs text-foreground/80 font-medium">
+                <Bell className="w-3.5 h-3.5 text-primary/80" />
+                <span>Browser Notifications</span>
+              </label>
+              <button
+                onClick={async () => {
+                  if (!settings.enableNotifications) {
+                    const granted = await requestPermission();
+                    if (granted) {
+                      updateSetting("enableNotifications", true);
+                    } else {
+                      alert("Permission denied. Enable notifications in your browser settings to use this feature.");
+                    }
+                  } else {
+                    updateSetting("enableNotifications", false);
+                  }
+                }}
+                className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  settings.enableNotifications ? "bg-primary" : "bg-secondary"
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    settings.enableNotifications ? "translate-x-3" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* Messaging Frequency Selection */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs font-medium text-foreground/80">
+                <span>Check Frequency</span>
+                <span className="text-muted text-[10px]">
+                  {settings.simulationInterval === 30 ? "Testing (30s)" :
+                   settings.simulationInterval === 300 ? "Frequent (5m)" :
+                   settings.simulationInterval === 900 ? "Balanced (15m)" :
+                   settings.simulationInterval === 1800 ? "Casual (30m)" :
+                   settings.simulationInterval === 3600 ? "Rare (1h)" : "Custom"}
+                </span>
+              </div>
+              <select
+                value={settings.simulationInterval}
+                onChange={(e) => updateSetting("simulationInterval", parseInt(e.target.value))}
+                className="w-full bg-card border border-border focus:border-primary/80 focus:ring-1 focus:ring-primary/20 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none text-foreground font-sans cursor-pointer"
+              >
+                <option value={30}>Testing (30 seconds)</option>
+                <option value={300}>Frequent (5 minutes)</option>
+                <option value={900}>Balanced (15 minutes)</option>
+                <option value={1800}>Casual (30 minutes)</option>
+                <option value={3600}>Rare (1 hour)</option>
+              </select>
+              <p className="text-[10px] text-muted-foreground/80 leading-normal">
+                When active, the AI will autonomously send a follow-up or check-in message after this period of inactivity.
+              </p>
             </div>
           </div>
         )}

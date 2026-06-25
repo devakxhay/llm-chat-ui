@@ -473,6 +473,21 @@ export function useChat() {
     [activeChat, isGenerating, setChats, runChatStream]
   );
 
+  const addAssistantMessage = useCallback((chatId: string, content: string) => {
+    setChats((prev) =>
+      prev.map((c) => {
+        if (c.id !== chatId) return c;
+        const newMsg: Message = {
+          id: generateUUID(),
+          role: "assistant",
+          content,
+          timestamp: Date.now(),
+        };
+        return { ...c, messages: [...c.messages, newMsg] };
+      })
+    );
+  }, [setChats]);
+
   return {
     chats,
     activeChat,
@@ -486,5 +501,6 @@ export function useChat() {
     clearAllChats,
     sendMessage,
     regenerateLastMessage,
+    addAssistantMessage,
   };
 }

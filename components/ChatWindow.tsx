@@ -21,6 +21,11 @@ interface ChatWindowProps {
   connectionStatus: "connected" | "disconnected" | "checking" | "idle";
   settings: Settings;
   onUpdateSetting: <K extends keyof Settings>(key: K, value: Settings[K]) => void;
+  autonomousChatDebug?: {
+    isUserInactive: boolean;
+    secondsSinceLastActivity: number;
+    inactivityThreshold: number;
+  };
 }
 
 const QUICK_PROMPTS = [
@@ -43,6 +48,7 @@ export function ChatWindow({
   connectionStatus,
   settings,
   onUpdateSetting,
+  autonomousChatDebug,
 }: ChatWindowProps) {
   const [input, setInput] = useState("");
   const [showModelDropdown, setShowModelDropdown] = useState(false);
@@ -181,7 +187,17 @@ export function ChatWindow({
         </div>
 
         {/* Header Right Actions */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2.5">
+          {settings.enableSimulation && autonomousChatDebug && (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-secondary/40 border border-border/40 text-[10px] text-muted-foreground select-none font-mono">
+              <span className={`w-1.5 h-1.5 rounded-full ${autonomousChatDebug.isUserInactive ? "bg-amber-500 animate-pulse" : "bg-green-500"}`} />
+              <span>
+                {autonomousChatDebug.isUserInactive 
+                  ? `Inactive (${autonomousChatDebug.secondsSinceLastActivity}s >= ${autonomousChatDebug.inactivityThreshold}s)` 
+                  : `Active (${autonomousChatDebug.secondsSinceLastActivity}s/${autonomousChatDebug.inactivityThreshold}s)`}
+              </span>
+            </div>
+          )}
           <Button
             variant="ghost"
             size="icon"

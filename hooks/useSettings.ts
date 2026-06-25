@@ -10,6 +10,9 @@ export interface Settings {
   theme: "light" | "dark";
   contextLimit: number;
   enableMemory: boolean;
+  enableSimulation: boolean;
+  simulationInterval: number; // in seconds
+  enableNotifications: boolean;
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -19,6 +22,9 @@ const DEFAULT_SETTINGS: Settings = {
   theme: "dark",
   contextLimit: 2048,
   enableMemory: true,
+  enableSimulation: false,
+  simulationInterval: 900, // 15 minutes default
+  enableNotifications: false,
 };
 
 export function useSettings() {
