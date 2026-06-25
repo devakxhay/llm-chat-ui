@@ -97,7 +97,9 @@ export function useOllama() {
         messages: ChatMessagePayload[];
         options?: {
           temperature?: number;
+          num_ctx?: number;
         };
+        keep_alive?: string | number;
       },
       onChunk: (text: string) => void,
       onDone?: () => void,

@@ -168,7 +168,9 @@ ${conversationHistoryString}`;
             stream: false,
             options: {
               temperature: 0.8,
-            }
+              num_ctx: settings.contextLimit,
+            },
+            keep_alive: settings.keepAlive === "-1" ? -1 : settings.keepAlive,
           }),
         });
 

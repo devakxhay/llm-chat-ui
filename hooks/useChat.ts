@@ -107,6 +107,7 @@ export function useChat() {
       ollamaUrl: string,
       temperature: number,
       contextLimit: number,
+      keepAlive: string,
       chatStreamFn: (
         url: string,
         payload: {
@@ -116,6 +117,7 @@ export function useChat() {
             temperature?: number;
             num_ctx?: number;
           };
+          keep_alive?: string | number;
         },
         onChunk: (text: string) => void,
         onDone?: () => void,
@@ -140,6 +142,7 @@ export function useChat() {
             temperature,
             num_ctx: contextLimit,
           },
+          keep_alive: keepAlive === "-1" ? -1 : keepAlive,
         },
         // onChunk
         (text: string) => {
@@ -178,6 +181,7 @@ export function useChat() {
       systemPrompt: string,
       temperature: number,
       contextLimit: number,
+      keepAlive: string,
       chatStreamFn: (
         url: string,
         payload: {
@@ -187,6 +191,7 @@ export function useChat() {
             temperature?: number;
             num_ctx?: number;
           };
+          keep_alive?: string | number;
         },
         onChunk: (text: string) => void,
         onDone?: () => void,
@@ -349,7 +354,7 @@ export function useChat() {
             "x-ollama-endpoint": "api/chat",
           },
           body: JSON.stringify({
-            model: "gemma3:270m",
+            model: model,
             messages: [
               {
                 role: "system",
@@ -361,6 +366,10 @@ export function useChat() {
               }
             ],
             stream: false,
+            options: {
+              num_ctx: contextLimit,
+            },
+            keep_alive: keepAlive === "-1" ? -1 : keepAlive,
           }),
         })
           .then((res) => {
@@ -383,7 +392,7 @@ export function useChat() {
             }
           })
           .catch((err) => {
-            console.warn("Failed to generate title using gemma3:270m, using fallback", err);
+            console.warn(`Failed to generate title using ${model}, using fallback`, err);
           });
       }
 
@@ -403,6 +412,7 @@ export function useChat() {
         ollamaUrl,
         temperature,
         contextLimit,
+        keepAlive,
         chatStreamFn
       );
     },
@@ -415,6 +425,7 @@ export function useChat() {
       systemPrompt: string,
       temperature: number,
       contextLimit: number,
+      keepAlive: string,
       chatStreamFn: (
         url: string,
         payload: {
@@ -424,6 +435,7 @@ export function useChat() {
             temperature?: number;
             num_ctx?: number;
           };
+          keep_alive?: string | number;
         },
         onChunk: (text: string) => void,
         onDone?: () => void,
@@ -467,6 +479,7 @@ export function useChat() {
         ollamaUrl,
         temperature,
         contextLimit,
+        keepAlive,
         chatStreamFn
       );
     },

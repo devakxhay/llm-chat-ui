@@ -206,6 +206,21 @@ export function SettingsPanel({
             />
           </div>
         </div>
+
+        <div className="space-y-1.5">
+          <label className="font-semibold text-foreground block text-xs">Keep Alive Duration</label>
+          <select
+            value={settings.keepAlive || "30m"}
+            onChange={(e) => updateSetting("keepAlive", e.target.value)}
+            className="w-full bg-card border border-border focus:border-primary/80 focus:ring-2 focus:ring-primary/20 rounded-xl px-3 py-2 text-xs focus:outline-none text-foreground cursor-pointer"
+          >
+            <option value="5m">5 Minutes (Default)</option>
+            <option value="30m">30 Minutes</option>
+            <option value="1h">1 Hour</option>
+            <option value="-1">Indefinite (Keep in memory)</option>
+            <option value="0">Unload immediately</option>
+          </select>
+        </div>
       </div>
 
       <hr className="border-border/60" />

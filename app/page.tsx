@@ -152,7 +152,9 @@ ${conversationStr}`;
           stream: false,
           options: {
             temperature: 0.1,
-          }
+            num_ctx: settings.contextLimit,
+          },
+          keep_alive: settings.keepAlive === "-1" ? -1 : settings.keepAlive,
         }),
       });
 
@@ -203,6 +205,7 @@ ${conversationStr}`;
       getSystemPromptWithMemories(),
       settings.temperature,
       settings.contextLimit,
+      settings.keepAlive,
       chatStream
     );
   };
@@ -213,6 +216,7 @@ ${conversationStr}`;
       getSystemPromptWithMemories(),
       settings.temperature,
       settings.contextLimit,
+      settings.keepAlive,
       chatStream
     );
   };

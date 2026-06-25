@@ -13,6 +13,7 @@ export interface Settings {
   enableSimulation: boolean;
   simulationInterval: number; // in seconds
   enableNotifications: boolean;
+  keepAlive: string;
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -25,6 +26,7 @@ const DEFAULT_SETTINGS: Settings = {
   enableSimulation: false,
   simulationInterval: 900, // 15 minutes default
   enableNotifications: false,
+  keepAlive: "30m",
 };
 
 export function useSettings() {
